@@ -18,8 +18,6 @@ import glm
 pygame.init()
 w,h = (600,600)
 pantalla = pygame.display.set_mode((w,h), pygame.OPENGL | pygame.DOUBLEBUF)
-glClearColor(0.1, 0.2, 0.3, 1)
-
 
 vertex_shader = """
 #version 460
@@ -55,23 +53,20 @@ void main()
     fragColor = vec4(color, 1.0f);
 }
 """
+# shaders
 compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
 compiled_fragment_shader = compileShader(fragment_shader, GL_FRAGMENT_SHADER)
-shader = compileProgram(
-    compiled_vertex_shader,
-    compiled_fragment_shader
-)
-
+shader = compileProgram(compiled_vertex_shader, compiled_fragment_shader)
 glUseProgram(shader)
 
-
-
+# data
 vertex_data = numpy.array([
     -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
      0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
      0.0,  0.5, 0.0, 0.0, 0.0, 1.0
 ], dtype=numpy.float32)
 
+# object en vertex usando data
 vertex_buffer_object = glGenBuffers(1)
 glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
 glBufferData(
@@ -83,66 +78,27 @@ glBufferData(
 vertex_array_object = glGenVertexArrays(1)
 glBindVertexArray(vertex_array_object)
 
-glVertexAttribPointer(
-    0,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    6 * 4,
-    ctypes.c_void_p(0)
-)
+glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(0))
 glEnableVertexAttribArray(0)
-
-
-glVertexAttribPointer(
-    1,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    6 * 4,
-    ctypes.c_void_p(3 * 4)
-)
+glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(12))
 glEnableVertexAttribArray(1)
-
 
 def calculateMatrix(angle):
     i = glm.mat4(1)
     translate = glm.translate(i, glm.vec3(0, 0, 0))
     rotate = glm.rotate(i, glm.radians(angle), glm.vec3(0, 1, 0))
     scale = glm.scale(i, glm.vec3(1, 1, 1))
-
     model = translate * rotate * scale
-
-    view = glm.lookAt(
-        glm.vec3(0, 0, 5),
-        glm.vec3(0, 0, 0),
-        glm.vec3(0, 1, 0)
-    )
-
-    projection = glm.perspective(
-        glm.radians(45),
-        1600/1200,
-        0.1,
-        1000.0
-    )
-
+    view = glm.lookAt( glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
+    projection = glm.perspective(glm.radians(45), 600/600, 0.1, 1000.0) #using w,h
     amatrix = projection * view * model
+    glUniformMatrix4fv( glGetUniformLocation(shader, 'amatrix'), 1, GL_FALSE, glm.value_ptr(amatrix))
 
-    glUniformMatrix4fv(
-        glGetUniformLocation(shader, 'amatrix'),
-        1,
-        GL_FALSE,
-        glm.value_ptr(amatrix)
-    )
-
-glViewport(0, 0, 1600, 1200)
-
-
+# Viewport
+glViewport(0, 0, w, h)
+glClearColor(0.1, 0.2, 0.3, 1)
 
 running = True
-
-glClearColor(0.5, 1.0, 0.5, 1.0)
-
 r = 0
 
 while running:
@@ -155,16 +111,10 @@ while running:
 
     color = glm.vec3(color1, color2, color3)
 
-    glUniform3fv(
-        glGetUniformLocation(shader,'color'),
-        1,
-        glm.value_ptr(color)
-    )
-
+    glUniform3fv( glGetUniformLocation(shader,'color'), 1, glm.value_ptr(color))
     calculateMatrix(r)
 
     pygame.time.wait(50)
-
 
     glDrawArrays(GL_TRIANGLES, 0, 3)
 
