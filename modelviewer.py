@@ -14,6 +14,8 @@ import random
 from OpenGL.GL import *
 from OpenGL.GL.shaders import *
 import glm
+from Object import *
+from math import sin,cos
 
 pygame.init()
 w,h = (600,600)
@@ -103,15 +105,19 @@ void main()
 # shaders
 compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
 compiled_fragment_shader = compileShader(fragment_shader, GL_FRAGMENT_SHADER)
-shader = compileProgram(compiled_vertex_shader, compiled_fragment_shader)
-glUseProgram(shader)
+compiled_size_shader = compileShader(sizes_shader, GL_FRAGMENT_SHADER)
+compiled_golden_shader = compileShader(golden_shader, GL_FRAGMENT_SHADER)
 
-# data
-vertex_data = numpy.array([
-    -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
-     0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
-     0.0,  0.5, 0.0, 0.0, 0.0, 1.0
-], dtype=numpy.float32)
+shader0 = compileProgram(compiled_vertex_shader, compiled_fragment_shader)
+shader1 = compileProgram(compiled_vertex_shader, compiled_size_shader)
+shader2 = compileProgram(compiled_vertex_shader, compiled_golden_shader)
+
+glUseProgram(shader1)
+glEnable(GL_DEPTH_TEST)
+
+# loading object
+plant = Object('plant.obj')
+vertex_data = plant.vertices # aqui se cargaba un cubo
 
 # object en vertex usando data
 vertex_buffer_object = glGenBuffers(1)
@@ -127,8 +133,6 @@ glBindVertexArray(vertex_array_object)
 
 glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(0))
 glEnableVertexAttribArray(0)
-glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 24, ctypes.c_void_p(12))
-glEnableVertexAttribArray(1)
 
 def calculateMatrix(angle):
     i = glm.mat4(1)
@@ -137,36 +141,54 @@ def calculateMatrix(angle):
     scale = glm.scale(i, glm.vec3(1, 1, 1))
     model = translate * rotate * scale
     view = glm.lookAt( glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
-    projection = glm.perspective(glm.radians(45), 600/600, 0.1, 1000.0) #using w,h
+    projection = glm.perspective(glm.radians(45), 1260/900, 0.1, 1000.0)
     amatrix = projection * view * model
-    glUniformMatrix4fv( glGetUniformLocation(shader, 'amatrix'), 1, GL_FALSE, glm.value_ptr(amatrix))
+    glUniformMatrix4fv( glGetUniformLocation(shader0, 'amatrix'), 1, GL_FALSE, glm.value_ptr(amatrix))
 
 # Viewport
 glViewport(0, 0, w, h)
 glClearColor(0.1, 0.2, 0.3, 1)
 
+temp2 = 0
+
 running = True
 r = 0
-
+temp = shader1
+calculateMatrix(r)
 while running:
     r += 1
-    glClear(GL_COLOR_BUFFER_BIT)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    mouse = pygame.mouse.get_rel()
+    teclado = pygame.key.get_pressed()
+    if temp2 == 1: 
+        glUseProgram(temp)
+        temp2 = 0
 
-    color1 = random.random()
-    color2 = random.random()
-    color3 = random.random()
-
-    color = glm.vec3(color1, color2, color3)
-
-    glUniform3fv( glGetUniformLocation(shader,'color'), 1, glm.value_ptr(color))
-    calculateMatrix(r)
+    glUniform1f(glGetUniformLocation(temp,'iTime'),r/100)
 
     pygame.time.wait(50)
 
-    glDrawArrays(GL_TRIANGLES, 0, 3)
+    glDrawArrays(GL_TRIANGLES, 0, len(vertex_data))
 
     pygame.display.flip()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                temp = shader0
+                temp2 = 1
+            if event.key == pygame.K_2:
+                temp = shader1
+                temp2 = 1
+            if event.key == pygame.K_3:
+                temp = shader2
+                temp2 = 1
+            if event.key == pygame.K_RIGHT:
+                r += 0.3
+                calculateMatrix(r)
+            if event.key == pygame.K_LEFT:
+                r -= 0.3
+                calculateMatrix(r)
+        r += (mouse[0] / 10)
