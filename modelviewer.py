@@ -53,6 +53,53 @@ void main()
     fragColor = vec4(color, 1.0f);
 }
 """
+
+sizes_shader = """
+#version 460
+
+layout (location = 0) out vec4 position;
+layout (location = 1) out vec4 texturecords;
+layout (location = 2) out vec4 normal;
+
+uniform float time; // para que cambie con el tiempo
+
+uniform mat4 ModelMatrix;
+uniform mat4 ViewMatrix;
+uniform mat4 ProjectionMatrix;
+
+//retornos
+out vec2 cord;
+out vec3 norms;
+out vec3 pos;
+
+in vec3 ourColor;
+
+void main()
+{
+    pos = (ModelMatrix * vec4(position + normal + cos(time)/10, 1.0)).xyz;
+    cord = texturecords;
+    norms = normal;
+    gl_Position = ModelMatrix * ViewMatrix * ProjectionMatrix * vec4(position + normal * cos(time)/10, 1.0)
+}
+"""
+
+golden_shader = """
+#version 460
+
+out vec4 fragColor;
+
+uniform sampler2D textura;
+uniform vec3 light;
+
+in vec3 normales;
+in vec3 position;
+in vec2 texturecords;
+
+void main()
+{
+    fragColor = texture(texture, texturecords) * vec4(1,1,0,1.0)
+}
+"""
 # shaders
 compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
 compiled_fragment_shader = compileShader(fragment_shader, GL_FRAGMENT_SHADER)
