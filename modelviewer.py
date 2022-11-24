@@ -82,7 +82,7 @@ void main()
     pos = (ModelMatrix * vec4(position + normal + cos(clock)/10, 1.0)).xyz;
     cord = texturecords;
     norms = normal;
-    gl_Position = ModelMatrix * ViewMatrix * ProjectionMatrix * vec4(position + normal * cos(clock)/10, 1.0)
+    gl_Position = ModelMatrix * ViewMatrix * ProjectionMatrix * vec4(position + normal * cos(clock)/10, 1.0);
 }
 """
 
@@ -100,7 +100,7 @@ in vec2 texturecords;
 
 void main()
 {
-    fragColor = texture(texture, texturecords) * vec4(1,1,0,1.0)
+    fragColor = texture(texture, texturecords) * vec4(1,1,0,1.0);
 }
 """
 
