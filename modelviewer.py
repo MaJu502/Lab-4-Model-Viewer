@@ -58,19 +58,18 @@ void main()
 """
 
 sizes_shader = """
-#version 460
+#version 450 core
 
-layout (location = 0) out vec4 position;
-layout (location = 1) out vec4 texturecords;
-layout (location = 2) out vec4 normal;
+layout (location = 0) out vec3 position;
+layout (location = 1) out vec2 texturecords;
+layout (location = 2) out vec3 normal;
 
-uniform float clock; // para que cambie con el tiempo
+uniform float time;
 
 uniform mat4 ModelMatrix;
 uniform mat4 ViewMatrix;
 uniform mat4 ProjectionMatrix;
 
-//retornos
 out vec2 cord;
 out vec3 norms;
 out vec3 pos;
@@ -79,15 +78,15 @@ in vec3 ourColor;
 
 void main()
 {
-    pos = (ModelMatrix * vec4(position + normal + cos(clock)/10, 1.0)).xyz;
+    pos = (ModelMatrix * vec4(position + normal + cos(time)/10, 1.0)).xyz;
     cord = texturecords;
     norms = normal;
-    gl_Position = ModelMatrix * ViewMatrix * ProjectionMatrix * vec4(position + normal * cos(clock)/10, 1.0);
+    gl_Position = ModelMatrix * ViewMatrix * ProjectionMatrix * vec4(position + normal * cos(time)/10, 1.0);
 }
 """
 
 golden_shader = """
-#version 460
+#version 450 core
 
 out vec4 fragColor;
 
@@ -100,7 +99,7 @@ in vec2 texturecords;
 
 void main()
 {
-    fragColor = texture(texture, texturecords) * vec4(1,1,0,1.0);
+    fragColor = texture(textura, texturecords) * vec4(1.0,1.0,0.0,1.0);
 }
 """
 
@@ -160,7 +159,7 @@ glViewport(0, 0, w, h)
 glClearColor(0.1, 0.2, 0.3, 1)
 temp = compileProgram(compileShader(vertex_shader, GL_VERTEX_SHADER), compileShader(fragment_shader, GL_FRAGMENT_SHADER))
 light = glm.vec3(0,0,0)
-clock = 0
+time = 0
 r = 0
 
 
@@ -185,7 +184,7 @@ while running:
 
     glUniform1i( glGetUniformLocation(temp, "tex"), 0)
 
-    glUniform1f( glGetUniformLocation(temp, "clock"), clock)
+    glUniform1f( glGetUniformLocation(temp, "time"), time)
 
     glUniform3fv( glGetUniformLocation(temp, "light"), 1, glm.value_ptr(light))
 
@@ -208,12 +207,12 @@ while running:
                 temp = currentShade(golden_shader, fragment_shader)
             if event.key == pygame.K_RIGHT:
                 r += 0.3
-                light.x += 15 * clock
+                light.x += 15 * time
                 calculateMatrix(r)
             if event.key == pygame.K_LEFT:
                 r -= 0.3
-                light.x -= 15 * clock
+                light.x -= 15 * time
                 calculateMatrix(r)
         r += (mouse[0] / 10)
 
-    clock += 0.06
+    time += 0.06
