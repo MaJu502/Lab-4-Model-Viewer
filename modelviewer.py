@@ -117,7 +117,9 @@ glEnable(GL_DEPTH_TEST)
 
 # loading object
 plant = Object('.\objs\plant.obj')
-vertex_data = array(plant.vertices, dtype = float32) # aqui se cargaba un cubo
+plant_ver = getattr(plant, "vertices")
+plant_face = getattr(plant, "faces")
+vertex_data = numpy.array(plant.vertices, dtype = float32) # aqui se cargaba un cubo
 
 
 # object en vertex usando data
@@ -125,15 +127,17 @@ vertex_buffer_object = glGenBuffers(1)
 glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
 glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
 
-glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(0))
-glEnableVertexAttribArray(0)
-glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(12))
-glEnableVertexAttribArray(0)
-glVertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, 36, ctypes.c_void_p(24))
-glEnableVertexAttribArray(0)
-
 vertex_array_object = glGenVertexArrays(1)
 glBindVertexArray(vertex_array_object)
+
+glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(0))
+glEnableVertexAttribArray(0)
+glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(12))
+glEnableVertexAttribArray(0)
+glVertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(24))
+glEnableVertexAttribArray(0)
+
+
 
 ProjectionMatrix = glm.perspective(glm.radians(45), 1260/900, 0.1, 1000.0)
 
@@ -188,10 +192,9 @@ while running:
 
     glUniform3fv( glGetUniformLocation(temp, "light"), 1, glm.value_ptr(light))
 
-
     pygame.time.wait(50)
 
-    glDrawArrays(GL_TRIANGLES, 0, len(vertex_data))
+    glDrawArrays(GL_TRIANGLES, 0, len(plant_ver) + 5)
 
     pygame.display.flip()
 
