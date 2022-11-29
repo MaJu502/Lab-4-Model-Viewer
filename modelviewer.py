@@ -21,21 +21,21 @@ pygame.init()
 w,h = (600,600)
 pantalla = pygame.display.set_mode((w,h), pygame.OPENGL | pygame.DOUBLEBUF)
 reloj = pygame.time.Clock()
+# Viewport
+glViewport(0, 0, w, h)
+glClearColor(0.1, 0.2, 0.3, 1)
 
 vertex_shader = """
 #version 460
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 vertexColor;
 
-uniform mat4 amatrix;
-
-out vec3 ourColor;
+uniform mat4 ViewMatrix;
 
 
 void main()
 {
-    gl_Position = amatrix * vec4(position, 1.0f);
-    ourColor = vertexColor;
+    gl_Position = ViewMatrix * vec4(position, 1.0f);
 
 }
 """
@@ -43,83 +43,70 @@ void main()
 fragment_shader = """
 #version 460
 
-layout (location = 0) out vec4 fragColor;
+out vec4 FragColor;
 
-uniform vec3 color;
-
-
-in vec3 ourColor;
 
 void main()
 {
-    // fragColor = vec4(ourColor, 1.0f);
-    fragColor = vec4(color, 1.0f);
+    FragColor = vec4(1,1,1, 1.0f);
 }
 """
 
-sizes_shader = """
+golden_vertex = """
 #version 450 core
-
-layout (location = 0) out vec3 position;
-layout (location = 1) out vec2 texturecords;
-layout (location = 2) out vec3 normal;
-
-uniform float time;
-
-uniform mat4 ModelMatrix;
+layout (location = 0) in vec3 position;
+layout (location = 2) in vec2 texturecords;
 uniform mat4 ViewMatrix;
-uniform mat4 ProjectionMatrix;
 
 out vec2 cord;
-out vec3 norms;
-out vec3 pos;
 
 in vec3 ourColor;
 
 void main()
 {
-    pos = (ModelMatrix * vec4(position + normal + cos(time)/10, 1.0)).xyz;
-    cord = texturecords;
-    norms = normal;
-    gl_Position = ModelMatrix * ViewMatrix * ProjectionMatrix * vec4(position + normal * cos(time)/10, 1.0);
+  cord = texturecords;
+  gl_Position = ViewMatrix * vec4(position, 1.0);
 }
 """
 
-golden_shader = """
+golden_shader = '''
 #version 450 core
+out vec4 FragColor;
+in vec2 cord;
 
-out vec4 fragColor;
-
-uniform sampler2D textura;
-uniform vec3 light;
-
-in vec3 normales;
-in vec3 position;
-in vec2 texturecords;
+uniform sampler2D ourTexture;
 
 void main()
 {
-    fragColor = texture(textura, texturecords) * vec4(1.0,1.0,0.0,1.0);
+  FragColor = texture(ourTexture, cord) * vec4(1.0, 1.0, 0.0, 1.0);
 }
-"""
+'''
 
 
-texture_surface = pygame.image.load("./objs/plant.bmp")
-texture_data = pygame.image.tostring(texture_surface,"RGB",1)
-width = texture_surface.get_width()
-height = texture_surface.get_height()
-texture = glGenTextures(1)
-glBindTexture(GL_TEXTURE_2D, texture)
-glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_data)
-glGenerateMipmap(GL_TEXTURE_2D)
 
-glEnable(GL_DEPTH_TEST)
+
+sh1 = compileProgram( compileShader(vertex_shader, GL_VERTEX_SHADER), compileShader(fragment_shader,GL_FRAGMENT_SHADER) )
+sh2 = compileProgram( compileShader(golden_vertex, GL_VERTEX_SHADER), compileShader(golden_shader,GL_FRAGMENT_SHADER) )
+
+
 
 # loading object
 plant = Object('.\objs\plant.obj')
-plant_ver = getattr(plant, "vertices")
-plant_face = getattr(plant, "faces")
-vertex_data = numpy.array(plant.vertices, dtype = float32) # aqui se cargaba un cubo
+triangle_count,vertex_data = plant.object_data()
+
+texture = glGenTextures(1)
+glBindTexture(GL_TEXTURE_2D, texture)
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+image = pygame.image.load('.\objs\plant.bmp').convert()
+image_width, image_height = image.get_rect().size
+image_data = pygame.image.tostring(image, 'RGB')
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data)
+glGenerateMipmap(GL_TEXTURE_2D)
+
 
 
 # object en vertex usando data
@@ -130,13 +117,14 @@ glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
 vertex_array_object = glGenVertexArrays(1)
 glBindVertexArray(vertex_array_object)
 
-glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(0))
-glEnableVertexAttribArray(0)
-glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(12))
-glEnableVertexAttribArray(0)
-glVertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, 12, ctypes.c_void_p(24))
+glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(0))
 glEnableVertexAttribArray(0)
 
+glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(12))
+glEnableVertexAttribArray(1)
+
+glVertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, 32, ctypes.c_void_p(20))
+glEnableVertexAttribArray(2)
 
 
 ProjectionMatrix = glm.perspective(glm.radians(45), 1260/900, 0.1, 1000.0)
@@ -144,37 +132,23 @@ ProjectionMatrix = glm.perspective(glm.radians(45), 1260/900, 0.1, 1000.0)
 def calculateMatrix(angle):
     if temp != None:
         i = glm.mat4(1)
-        translate = glm.translate(i, glm.vec3(0, 0, 0))
+        translate = glm.translate(i, glm.vec3(0, -1.5, 0))
         rotate = glm.rotate(i, glm.radians(angle), glm.vec3(0, 1, 0))
-        scale = glm.scale(i, glm.vec3(1, 1, 1))
+        scale = glm.scale(i, glm.vec3(0.5,0.5,0.5))
         model = translate * rotate * scale
         view = glm.lookAt( glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
 
         return ProjectionMatrix * view * model
 
-def currentShade(vertex, fragment):
-    if vertex and fragment:
-        return compileProgram(compileShader(vertex, GL_VERTEX_SHADER), compileShader(fragment, GL_FRAGMENT_SHADER))
-    else:
-        return None
-
-# Viewport
-glViewport(0, 0, w, h)
-glClearColor(0.1, 0.2, 0.3, 1)
-temp = compileProgram(compileShader(vertex_shader, GL_VERTEX_SHADER), compileShader(fragment_shader, GL_FRAGMENT_SHADER))
-light = glm.vec3(0,0,0)
 time = 0
 r = 0
-
-
+temp = sh2
 ViewMatrix = calculateMatrix(r)
-
-
+pygame.display.flip()
 running = True
-
 calculateMatrix(r)
 while running:
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glClear(GL_COLOR_BUFFER_BIT)
 
     mouse = pygame.mouse.get_rel()
     teclado = pygame.key.get_pressed()
@@ -190,32 +164,28 @@ while running:
 
     glUniform1f( glGetUniformLocation(temp, "time"), time)
 
-    glUniform3fv( glGetUniformLocation(temp, "light"), 1, glm.value_ptr(light))
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
-    pygame.time.wait(50)
-
-    glDrawArrays(GL_TRIANGLES, 0, len(plant_ver) + 5)
+    glDrawArrays(GL_TRIANGLES, 0, triangle_count)
 
     pygame.display.flip()
+
+    r += 0.03
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1:
-                temp = currentShade(vertex_shader, fragment_shader)
+                temp = sh1
             if event.key == pygame.K_2:
-                temp = currentShade(sizes_shader, fragment_shader)
-            if event.key == pygame.K_3:
-                temp = currentShade(golden_shader, fragment_shader)
+                temp = sh2
             if event.key == pygame.K_RIGHT:
-                r += 0.3
-                light.x += 15 * time
+                r += 10
                 calculateMatrix(r)
             if event.key == pygame.K_LEFT:
-                r -= 0.3
-                light.x -= 15 * time
+                r -= 10
                 calculateMatrix(r)
-        r += (mouse[0] / 10)
+        r += (mouse[0] / 1)
 
     time += 0.06
