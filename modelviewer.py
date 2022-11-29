@@ -5,7 +5,7 @@
     opengl.
 
     @author Marco Antonio Jurado 20308
-    last update: 22/11/2022
+    last update: 29/11/2022
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 import pygame
@@ -124,7 +124,7 @@ void main()
 }
 '''
 
-explode_v ='''
+ping5000_vertex ='''
 #version 450 core
 layout (location = 0) in vec3 position;
 layout (location = 2) in vec2 texturecords;
@@ -143,17 +143,24 @@ void main()
 {
     cord = texturecords;
     norms = normals;
-    pos = (ModelMatrix * vec4(position + normals * cos(time)/10, 1.5)).xyz;
-    gl_Position = ProjectionMatrix * ViewMatrix * ModelMatrix * vec4(position + normals * cos(time)/10, 1.5);
+    if ((cos(time)>=0) && cos(time)<0.5){
+        gl_Position =ViewMatrix * vec4(position + 0.5, 1.0);
+    } else if (cos(time)>=0.5 && cos(time)<1) {
+        gl_Position =ViewMatrix * vec4(position + 1.0, 1.0);
+    } else if (cos(time)<0 && cos(time)>=-0.5) {
+        gl_Position =ViewMatrix * vec4(position - 0.5, 1.0);
+    } else if (cos(time)<0 && cos(time)>=-1) {
+        gl_Position =ViewMatrix * vec4(position - 1.0, 1.0);
+    }
+    
 }
 '''
-possible = '''
+ping5000_fragment = '''
 #version 450 core
 out vec4 FragColor;
 
 in vec2 cord;
 in vec3 norms;
-in vec3 pos;
 
 uniform sampler2D theTexture;
 
@@ -163,15 +170,10 @@ void main()
 }
 '''
 
-
-
-
 sh1 = compileProgram( compileShader(vertex_shader, GL_VERTEX_SHADER), compileShader(fragment_shader,GL_FRAGMENT_SHADER) )
 sh2 = compileProgram( compileShader(golden_vertex, GL_VERTEX_SHADER), compileShader(golden_shader,GL_FRAGMENT_SHADER) )
 sh3 = compileProgram( compileShader(color_storm_vertex, GL_VERTEX_SHADER), compileShader(color_storm_fragment,GL_FRAGMENT_SHADER) )
-sh4 = compileProgram( compileShader(explode_v, GL_VERTEX_SHADER), compileShader(possible,GL_FRAGMENT_SHADER) )
-
-
+sh4 = compileProgram( compileShader(ping5000_vertex, GL_VERTEX_SHADER), compileShader(ping5000_fragment,GL_FRAGMENT_SHADER) )
 
 # loading object
 plant = Object('.\objs\plant.obj')
@@ -189,8 +191,6 @@ image_width, image_height = image.get_rect().size
 image_data = pygame.image.tostring(image, 'RGB')
 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data)
 glGenerateMipmap(GL_TEXTURE_2D)
-
-
 
 # object en vertex usando data
 vertex_buffer_object = glGenBuffers(1)
